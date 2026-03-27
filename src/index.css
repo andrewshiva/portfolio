@@ -314,3 +314,12 @@ a {
     font-size: clamp(1.75rem, 8vw, 2.5rem);
   }
 }
+
+/* ── Magic UI Animations ── */
+@keyframes grid {
+  0% { transform: translateY(-50%); }
+  100% { transform: translateY(0); }
+}
+.animate-grid {
+  animation: grid 20s linear infinite;
+}
