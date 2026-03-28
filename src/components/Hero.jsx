@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { siteConfig } from '../data/portfolio';
-import { ChevronDown, ArrowRight } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 
 export default function Hero() {
   const [lines, setLines] = useState([]);
@@ -197,29 +197,7 @@ export default function Hero() {
         </div>
       </div>
 
-      {/* Scroll indicator */}
-      <div style={{
-        position: 'absolute',
-        bottom: '2rem',
-        left: '50%',
-        transform: 'translateX(-50%)',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: '0.5rem',
-        opacity: showContent ? 0.5 : 0,
-        transition: 'opacity 1s',
-        animation: 'fadeInUp 1s ease forwards',
-      }}>
-        <span style={{
-          fontFamily: "'JetBrains Mono', monospace",
-          fontSize: '0.65rem',
-          color: 'var(--text-muted)',
-          letterSpacing: '0.15em',
-          textTransform: 'uppercase',
-        }}>Scroll</span>
-        <ChevronDown size={16} style={{ color: 'var(--text-muted)', animation: 'blink 2s ease infinite' }} />
-      </div>
+
 
       <style>{`
         @media (max-width: 768px) {
