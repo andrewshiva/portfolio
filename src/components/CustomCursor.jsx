@@ -5,36 +5,50 @@ export default function CustomCursor() {
   const glowRef = useRef(null);
 
   useEffect(() => {
+    // Disable on touch/coarse pointer — saves battery + CPU on mobile
+    if (window.matchMedia('(pointer: coarse)').matches || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      if (dotRef.current) dotRef.current.style.display = 'none';
+      if (glowRef.current) glowRef.current.style.display = 'none';
+      return;
+    }
     const dot = dotRef.current;
     const glow = glowRef.current;
     let mouseX = 0, mouseY = 0;
     let dotX = 0, dotY = 0;
     let glowX = 0, glowY = 0;
+    let visible = true;
 
     const handleMove = (e) => {
       mouseX = e.clientX;
       mouseY = e.clientY;
     };
+    // Pause RAF when tab hidden
+    const onVis = () => { visible = document.visibilityState === 'visible'; };
+    document.addEventListener('visibilitychange', onVis);
 
+    let raf;
     const animate = () => {
+      if (!visible) { raf = requestAnimationFrame(animate); return; }
       dotX += (mouseX - dotX) * 0.25;
       dotY += (mouseY - dotY) * 0.25;
       glowX += (mouseX - glowX) * 0.08;
       glowY += (mouseY - glowY) * 0.08;
 
       if (dot) {
-        dot.style.left = dotX + 'px';
-        dot.style.top = dotY + 'px';
+        dot.style.transform = `translate3d(${dotX}px,${dotY}px,0) translate(-50%,-50%)`;
+        dot.style.left = '0';
+        dot.style.top = '0';
       }
       if (glow) {
-        glow.style.left = glowX + 'px';
-        glow.style.top = glowY + 'px';
+        glow.style.transform = `translate3d(${glowX}px,${glowY}px,0) translate(-50%,-50%)`;
+        glow.style.left = '0';
+        glow.style.top = '0';
       }
-      requestAnimationFrame(animate);
+      raf = requestAnimationFrame(animate);
     };
 
-    window.addEventListener('mousemove', handleMove);
-    animate();
+    window.addEventListener('mousemove', handleMove, { passive: true });
+    raf = requestAnimationFrame(animate);
 
     // Magnetic effect for interactive elements
     const magnetics = document.querySelectorAll('button, a, .card');
@@ -54,6 +68,8 @@ export default function CustomCursor() {
 
     return () => {
       window.removeEventListener('mousemove', handleMove);
+      document.removeEventListener('visibilitychange', onVis);
+      cancelAnimationFrame(raf);
       magnetics.forEach(el => {
         el.removeEventListener('mouseenter', handleEnter);
         el.removeEventListener('mouseleave', handleLeave);

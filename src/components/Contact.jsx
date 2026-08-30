@@ -33,8 +33,42 @@ export default function Contact() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (!form.name.trim() || !form.email.trim() || !form.message.trim()) return;
+    const subject = encodeURIComponent(`Portfolio inquiry from ${form.name}`);
+    const body = encodeURIComponent(`Name: ${form.name}\nEmail: ${form.email}\n\nMessage:\n${form.message}`);
+    const mailto = `mailto:${siteConfig.email}?subject=${subject}&body=${body}`;
+    const gmail = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(siteConfig.email)}&su=${subject}&body=${body}`;
+    console.log('[contact] mailto:', mailto);
+    console.log('[contact] gmail:', gmail);
+    // Primary: Gmail compose (works without local mail client). Secondary: mailto hidden anchor.
+    const win = window.open(gmail, '_blank', 'noopener,noreferrer');
+    if (!win) {
+      // Popup blocked — fallback to mailto anchor click
+      try {
+        const a = document.createElement('a');
+        a.href = mailto;
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => { window.location.href = mailto; }, 300);
+      } catch {
+        window.location.href = mailto;
+      }
+    } else {
+      // Also trigger mailto in background for users with native client (no harm)
+      setTimeout(() => {
+        const a = document.createElement('a');
+        a.href = mailto;
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }, 400);
+    }
     setSent(true);
-    setTimeout(() => setSent(false), 3000);
+    setTimeout(() => setSent(false), 6000);
     setForm({ name: '', email: '', message: '' });
   };
 
@@ -119,7 +153,7 @@ export default function Contact() {
                   </div>
                   <div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>Email</div>
-                    <div style={{ fontSize: '0.9rem', color: 'var(--text-primary)' }}>{siteConfig.email}</div>
+                    <a href={`mailto:${siteConfig.email}`} style={{ fontSize: '0.9rem', color: 'var(--text-primary)', textDecoration: 'none', borderBottom: '1px dashed var(--border)' }}>{siteConfig.email}</a>
                   </div>
                 </div>
 
@@ -236,6 +270,15 @@ export default function Contact() {
                   <>Send Message <ArrowRight size={16} /></>
                 )}
               </button>
+              {sent && (
+                <div style={{ marginTop: '0.75rem', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--text-muted)', lineHeight: 1.6, textAlign: 'center' }}>
+                  Opening mail app…<br />
+                  If nothing opens,{' '}
+                  <a href={`mailto:${siteConfig.email}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', textDecoration: 'underline' }}>click to email</a>
+                  {' '}or{' '}
+                  <a href={`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(siteConfig.email)}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', textDecoration: 'underline' }}>open Gmail</a>
+                </div>
+              )}
             </div>
           </form>
         </div>

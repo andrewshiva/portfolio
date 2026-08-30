@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, memo } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { projects } from '../data/portfolio';
@@ -9,26 +9,40 @@ gsap.registerPlugin(ScrollTrigger);
 
 function ProjectCard({ project, index }) {
   const cardRef = useRef(null);
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const glowRef = useRef(null);
+  const rafRef = useRef(null);
+  const posRef = useRef({ x: 0, y: 0 });
   const [isHovered, setIsHovered] = useState(false);
 
   const handleMouseMove = (e) => {
-    const rect = cardRef.current.getBoundingClientRect();
+    const card = cardRef.current;
+    const glow = glowRef.current;
+    if (!card) return;
+    const rect = card.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    setMousePos({ x, y });
-
-    // 3D tilt
-    const centerX = rect.width / 2;
-    const centerY = rect.height / 2;
-    const rotateX = (y - centerY) / 15;
-    const rotateY = (centerX - x) / 15;
-    cardRef.current.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateY(-8px)`;
+    posRef.current = { x, y };
+    if (rafRef.current) return;
+    rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = null;
+      const { x: lx, y: ly } = posRef.current;
+      if (glow) {
+        glow.style.left = (lx - 150) + 'px';
+        glow.style.top = (ly - 150) + 'px';
+      }
+      const centerX = rect.width / 2;
+      const centerY = rect.height / 2;
+      const rotateX = (ly - centerY) / 18;
+      const rotateY = (centerX - lx) / 18;
+      card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateY(-6px)`;
+    });
   };
 
   const handleMouseLeave = () => {
     setIsHovered(false);
-    cardRef.current.style.transform = 'perspective(1000px) rotateX(0) rotateY(0) translateY(0)';
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    const card = cardRef.current;
+    if (card) card.style.transform = 'perspective(1000px) rotateX(0) rotateY(0) translateY(0)';
   };
 
   return (
@@ -45,26 +59,26 @@ function ProjectCard({ project, index }) {
         padding: '2rem',
         position: 'relative',
         overflow: 'hidden',
-        transition: 'box-shadow 0.4s, border-color 0.4s',
+        transition: 'box-shadow 0.4s, border-color 0.4s, transform 0.2s ease-out',
         cursor: 'pointer',
         borderColor: isHovered ? project.color + '40' : '',
         boxShadow: isHovered ? `0 20px 60px ${project.color}15` : '',
+        contain: 'layout paint',
+        willChange: 'transform',
       }}
     >
-      {/* Spotlight glow following cursor */}
-      {isHovered && (
-        <div style={{
-          position: 'absolute',
-          width: 300,
-          height: 300,
-          borderRadius: '50%',
-          background: `radial-gradient(circle, ${project.color}15, transparent 70%)`,
-          left: mousePos.x - 150,
-          top: mousePos.y - 150,
-          pointerEvents: 'none',
-          transition: 'none',
-        }} />
-      )}
+      {/* Spotlight glow following cursor — single DOM node, no React re-render per pixel */}
+      <div ref={glowRef} style={{
+        position: 'absolute',
+        width: 300,
+        height: 300,
+        borderRadius: '50%',
+        background: `radial-gradient(circle, ${project.color}15, transparent 70%)`,
+        pointerEvents: 'none',
+        opacity: isHovered ? 1 : 0,
+        transition: 'opacity 0.3s',
+        willChange: 'left, top',
+      }} />
 
       <div style={{ position: 'relative', zIndex: 1 }}>
         {/* Project number */}
@@ -148,27 +162,41 @@ function ProjectCard({ project, index }) {
         </div>
 
         {/* Links */}
-        <div style={{ display: 'flex', gap: '1rem' }}>
-          <a href={project.liveUrl} target="_blank" rel="noopener"
-            style={{
-              display: 'flex', alignItems: 'center', gap: '0.35rem',
-              fontFamily: 'var(--font-mono)', fontSize: '0.8rem',
-              color: project.color,
-              transition: 'opacity 0.3s',
-            }}
-          >
-            <ExternalLink size={14} /> Live
-          </a>
-          <a href={project.githubUrl} target="_blank" rel="noopener"
+        <div style={{ display: 'flex', gap: '1rem', position: 'relative', zIndex: 2 }}>
+          {project.liveUrl && project.liveUrl !== "#" && (
+            <a href={project.liveUrl} target="_blank" rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '0.35rem',
+                fontFamily: 'var(--font-mono)', fontSize: '0.8rem',
+                color: project.color,
+                transition: 'opacity 0.3s',
+                textDecoration: 'none',
+              }}
+            >
+              <ExternalLink size={14} /> Live
+            </a>
+          )}
+          <a href={project.githubUrl} target="_blank" rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
             style={{
               display: 'flex', alignItems: 'center', gap: '0.35rem',
               fontFamily: 'var(--font-mono)', fontSize: '0.8rem',
               color: 'var(--text-muted)',
               transition: 'color 0.3s',
+              textDecoration: 'none',
             }}
           >
             <GitHubIcon size={14} /> Code
           </a>
+          {(!project.liveUrl || project.liveUrl === "#") && (
+            <span style={{
+              fontFamily: 'var(--font-mono)', fontSize: '0.7rem',
+              color: 'var(--text-muted)', opacity: 0.5, alignSelf: 'center'
+            }}>
+              · No live demo
+            </span>
+          )}
         </div>
       </div>
     </div>
@@ -202,7 +230,7 @@ export default function Projects() {
   }, []);
 
   return (
-    <section id="projects" ref={sectionRef} className="section" style={{ paddingLeft: '72px' }}>
+    <section id="projects" ref={sectionRef} className="section" style={{ paddingLeft: '72px', contentVisibility: 'auto', containIntrinsicSize: '800px', contain: 'layout paint' }}>
       <div className="section-inner">
         <div className="section-label">Selected Work</div>
         <h2 className="section-title">

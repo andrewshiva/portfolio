@@ -31,32 +31,53 @@ export default function Hero() {
     });
   }, []);
 
-  // Particle starfield
+  // Particle starfield — paused offscreen, throttled for perf
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      canvas.style.display = 'none';
+      return;
+    }
     const ctx = canvas.getContext('2d');
     let animId;
+    let visible = true;
+    const isMobile = window.innerWidth < 768;
+    const count = isMobile ? 45 : 70; // was 120 — cut CPU/GPU ~40%
     const particles = [];
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.5); // cap DPR for perf
     const resize = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
+      canvas.width = window.innerWidth * dpr;
+      canvas.height = window.innerHeight * dpr;
+      canvas.style.width = window.innerWidth + 'px';
+      canvas.style.height = window.innerHeight + 'px';
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
     resize();
     window.addEventListener('resize', resize);
 
-    for (let i = 0; i < 120; i++) {
+    for (let i = 0; i < count; i++) {
       particles.push({
-        x: Math.random() * canvas.width,
-        y: Math.random() * canvas.height,
-        size: Math.random() * 1.5 + 0.5,
-        speed: Math.random() * 0.3 + 0.1,
-        opacity: Math.random() * 0.5 + 0.1,
+        x: Math.random() * window.innerWidth,
+        y: Math.random() * window.innerHeight,
+        size: Math.random() * 1.2 + 0.4,
+        speed: Math.random() * 0.25 + 0.08,
+        opacity: Math.random() * 0.45 + 0.08,
       });
     }
 
-    const draw = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // Pause when hero not in viewport — saves battery on scroll
+    const section = canvas.closest('#home');
+    const io = new IntersectionObserver(([e]) => { visible = e.isIntersecting; }, { threshold: 0 });
+    if (section) io.observe(section);
+
+    let last = 0;
+    const draw = (now) => {
+      if (!visible) { animId = requestAnimationFrame(draw); return; }
+      // Throttle to ~45fps on mobile, 60fps desktop — 16ms vs 22ms
+      if (now - last < (isMobile ? 22 : 16)) { animId = requestAnimationFrame(draw); return; }
+      last = now;
+      ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
       particles.forEach(p => {
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
@@ -64,23 +85,24 @@ export default function Hero() {
         ctx.fill();
         p.y -= p.speed;
         if (p.y < -5) {
-          p.y = canvas.height + 5;
-          p.x = Math.random() * canvas.width;
+          p.y = window.innerHeight + 5;
+          p.x = Math.random() * window.innerWidth;
         }
       });
       animId = requestAnimationFrame(draw);
     };
-    draw();
+    animId = requestAnimationFrame(draw);
     return () => {
       cancelAnimationFrame(animId);
       window.removeEventListener('resize', resize);
+      io.disconnect();
     };
   }, []);
 
   return (
-    <section id="home" className="section" style={{ minHeight: '100vh', paddingLeft: '72px' }}>
-      <canvas ref={canvasRef} style={{
-        position: 'absolute', inset: 0, zIndex: 0, opacity: 0.6
+    <section id="home" className="section" style={{ minHeight: '100vh', paddingLeft: '72px', contain: 'layout paint' }}>
+      <canvas ref={canvasRef} aria-hidden="true" style={{
+        position: 'absolute', inset: 0, zIndex: 0, opacity: 0.45, willChange: 'transform'
       }} />
 
       {/* Gradient orbs */}

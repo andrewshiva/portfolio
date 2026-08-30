@@ -90,12 +90,20 @@ export default function About() {
               <img
                 src={avatarImg}
                 alt="Shiva Singh Tomar"
+                loading="lazy"
+                decoding="async"
+                // @ts-ignore — fetchpriority for LCP control
+                fetchpriority="low"
+                width="400"
+                height="533"
+                sizes="(max-width: 768px) 100vw, 400px"
                 style={{
                   width: '100%',
                   height: '100%',
                   objectFit: 'cover',
                   objectPosition: 'center',
                   display: 'block',
+                  contentVisibility: 'auto',
                 }}
               />
 
